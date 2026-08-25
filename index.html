@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>真実か挑戦か</title>
+<meta name="description" content="通話しながら遊ぶ「真実か挑戦か」。部屋を作って合言葉を伝えるだけ、登録も入れ替えも要りません。">
+<meta name="theme-color" content="#0a0e24">
+<meta property="og:title" content="真実か挑戦か">
+<meta property="og:description" content="通話しながら遊ぶ「真実か挑戦か」。合言葉ひとつで、離れていても同じ卓を囲めます。">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Reggae+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Cinzel+Decorative:wght@400;700&family=Poiret+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0e24'/%3E%3Cpath d='M16 5l2.6 7.3L26 15l-7.4 2.7L16 25l-2.6-7.3L6 15l7.4-2.7z' fill='%23c9a349'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<div class="vignette" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ══════════ 入口 ══════════ -->
+<section class="screen is-active" id="s-gate">
+  <div class="gate">
+    <div class="crest" aria-hidden="true">
+      <svg viewBox="0 0 120 120" width="120" height="120">
+        <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" stroke-width="1"/>
+        <circle cx="60" cy="60" r="46" fill="none" stroke="currentColor" stroke-width="2.5"/>
+        <path d="M60 22 L67 50 L95 57 L67 64 L60 92 L53 64 L25 57 L53 50 Z" fill="currentColor"/>
+        <circle cx="60" cy="12" r="3" fill="currentColor"/>
+        <circle cx="60" cy="108" r="3" fill="currentColor"/>
+        <circle cx="12" cy="60" r="3" fill="currentColor"/>
+        <circle cx="108" cy="60" r="3" fill="currentColor"/>
+      </svg>
+    </div>
+    <p class="gate-eyebrow">MAISON DES ARCANES</p>
+    <h1 class="gate-title">真実か挑戦か</h1>
+    <div class="rule-gold" aria-hidden="true"></div>
+    <p class="gate-note">
+      この館のお題は<b>大人向け</b>です。<br>
+      きわどい話題も遠慮なく出てきます。<br>
+      気になる相手と遊ぶときは、部屋を作るときに<br>
+      <b>「きわどいお題」を切って</b>ください。
+    </p>
+    <button class="btn btn-gold" id="gate-enter">扉を開ける</button>
+  </div>
+</section>
+
+<!-- ══════════ ホーム ══════════ -->
+<section class="screen" id="s-home">
+  <header class="signboard">
+    <p class="sign-eyebrow">VÉRITÉ <span class="sep">◆</span> DÉFI</p>
+    <h1 class="sign-title">真実か挑戦か</h1>
+    <p class="sign-sub">通話をつないだまま、合言葉ひとつで同じ卓に着く</p>
+  </header>
+
+  <div class="home-actions">
+    <button class="btn btn-gold btn-wide" id="go-create">部屋をつくる</button>
+    <button class="btn btn-ghost btn-wide" id="go-join">部屋に入る</button>
+  </div>
+
+  <div class="howto">
+    <h2 class="howto-title">遊びかた</h2>
+    <ol class="howto-list">
+      <li><b>通話は別のアプリで</b>つないでおきます（Discord・LINE など）。この館は声を扱いません。</li>
+      <li>誰かが部屋をつくると<b>6文字の合言葉</b>が出ます。それを通話で読み上げてください。</li>
+      <li>順番に札が回ります。自分の番が来たら<b>真実か挑戦かを選ぶ</b>だけ。</li>
+      <li>出たお題が嫌なら逃げられます。ただし<b>罰の札が引かれます</b>。断れません。</li>
+    </ol>
+  </div>
+
+  <footer class="foot">
+    <span class="foot-mark">◆</span>
+    <span>お題はこの端末の中だけで選ばれます。会話も内容もどこにも記録されません。</span>
+  </footer>
+</section>
+
+<!-- ══════════ 部屋をつくる ══════════ -->
+<section class="screen" id="s-create">
+  <div class="panel">
+    <p class="panel-eyebrow">OUVRIR</p>
+    <h2 class="panel-title">部屋をつくる</h2>
+    <div class="rule-gold" aria-hidden="true"></div>
+
+    <label class="field">
+      <span class="field-label">あなたの名前</span>
+      <input type="text" id="create-name" maxlength="10" placeholder="通話で呼ばれている名前" autocomplete="off" spellcheck="false">
+      <span class="field-hint">全角10文字まで</span>
+    </label>
+
+    <div class="field">
+      <span class="field-label">きわどいお題</span>
+      <div class="switch-row">
+        <button class="switch is-on" id="sw-spicy" role="switch" aria-checked="true">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+          <span class="switch-text">入れる</span>
+        </button>
+      </div>
+      <span class="field-hint">切ると、性的な話題を含む札がすべて山から抜かれます。恋愛や本音の札は残ります。</span>
+    </div>
+
+    <button class="btn btn-gold btn-wide" id="do-create">札を配る</button>
+    <button class="btn btn-text" data-back="s-home">もどる</button>
+  </div>
+</section>
+
+<!-- ══════════ 部屋に入る ══════════ -->
+<section class="screen" id="s-join">
+  <div class="panel">
+    <p class="panel-eyebrow">ENTRER</p>
+    <h2 class="panel-title">部屋に入る</h2>
+    <div class="rule-gold" aria-hidden="true"></div>
+
+    <label class="field">
+      <span class="field-label">合言葉</span>
+      <input type="text" id="join-code" maxlength="7" placeholder="ABC123" autocomplete="off" spellcheck="false" autocapitalize="characters" class="code-input">
+      <span class="field-hint">部屋をつくった人が読み上げる6文字</span>
+    </label>
+
+    <label class="field">
+      <span class="field-label">あなたの名前</span>
+      <input type="text" id="join-name" maxlength="10" placeholder="通話で呼ばれている名前" autocomplete="off" spellcheck="false">
+    </label>
+
+    <button class="btn btn-gold btn-wide" id="do-join">扉を叩く</button>
+    <button class="btn btn-text" data-back="s-home">もどる</button>
+  </div>
+</section>
+
+<!-- ══════════ 控えの間（ロビー） ══════════ -->
+<section class="screen" id="s-lobby">
+  <div class="panel panel-wide">
+    <p class="panel-eyebrow">SALON</p>
+    <h2 class="panel-title">控えの間</h2>
+    <div class="rule-gold" aria-hidden="true"></div>
+
+    <div class="code-plate">
+      <span class="code-plate-label">合言葉</span>
+      <output class="code-plate-value" id="lobby-code">------</output>
+      <button class="btn btn-mini" id="copy-code">写す</button>
+    </div>
+    <p class="code-hint" id="lobby-hint">この6文字を通話で読み上げてください。</p>
+
+    <ul class="seats" id="lobby-seats"></ul>
+
+    <p class="lobby-status" id="lobby-status"></p>
+
+    <button class="btn btn-gold btn-wide" id="do-start">はじめる</button>
+    <button class="btn btn-text" id="do-leave-lobby">部屋を出る</button>
+  </div>
+</section>
+
+<!-- ══════════ 卓（ゲーム本編） ══════════ -->
+<section class="screen screen-game" id="s-game">
+  <div class="table">
+
+    <aside class="rail rail-left">
+      <p class="rail-title">卓の順</p>
+      <ul class="seats seats-compact" id="game-seats"></ul>
+      <div class="rail-code">
+        <span>合言葉</span><b id="game-code">------</b>
+      </div>
+    </aside>
+
+    <main class="stage">
+      <div class="turnbar">
+        <span class="turnbar-round" id="turn-round">第1巡</span>
+        <span class="turnbar-name" id="turn-name">—</span>
+      </div>
+
+      <div class="card-slot" id="card-slot">
+        <div class="card" id="card">
+          <div class="card-face card-back">
+            <div class="deco-frame" aria-hidden="true"></div>
+            <div class="back-art" aria-hidden="true">
+              <svg viewBox="0 0 200 300" preserveAspectRatio="xMidYMid meet">
+                <g fill="none" stroke="currentColor" stroke-width="1.2">
+                  <rect x="16" y="16" width="168" height="268"/>
+                  <rect x="24" y="24" width="152" height="252"/>
+                  <path d="M100 40 L160 150 L100 260 L40 150 Z"/>
+                  <circle cx="100" cy="150" r="40"/>
+                  <circle cx="100" cy="150" r="30"/>
+                  <path d="M100 60 L100 110 M100 190 L100 240 M50 150 L70 150 M130 150 L150 150"/>
+                </g>
+                <path d="M100 128a22 22 0 1 0 0 44 18 18 0 1 1 0-44z" fill="currentColor"/>
+                <g fill="currentColor">
+                  <circle cx="100" cy="96" r="2.6"/><circle cx="100" cy="204" r="2.6"/>
+                  <circle cx="62" cy="150" r="2.2"/><circle cx="138" cy="150" r="2.2"/>
+                </g>
+              </svg>
+            </div>
+          </div>
+          <div class="card-face card-front" id="card-front">
+            <div class="deco-frame" aria-hidden="true"></div>
+            <p class="card-kind" id="card-kind">VÉRITÉ</p>
+            <p class="card-cat" id="card-cat"></p>
+            <p class="card-target" id="card-target" hidden></p>
+            <p class="card-text" id="card-text"></p>
+            <p class="card-num" id="card-num"></p>
+          </div>
+        </div>
+      </div>
+
+      <p class="stage-caption" id="stage-caption">—</p>
+
+      <div class="actions" id="actions"></div>
+    </main>
+
+    <aside class="rail rail-right">
+      <p class="rail-title">いま効いている縛り</p>
+      <ul class="curses" id="curse-list"><li class="curses-empty">まだ無し</li></ul>
+      <p class="rail-title rail-title-2">出来事</p>
+      <ul class="log" id="log"></ul>
+    </aside>
+
+  </div>
+
+  <button class="btn btn-text btn-quit" id="do-quit">卓を離れる</button>
+</section>
+
+<!-- ══════════ おひらき ══════════ -->
+<section class="screen" id="s-end">
+  <div class="panel panel-wide">
+    <p class="panel-eyebrow">FIN</p>
+    <h2 class="panel-title">おひらき</h2>
+    <div class="rule-gold" aria-hidden="true"></div>
+    <p class="end-lead" id="end-lead"></p>
+    <ul class="tally" id="end-tally"></ul>
+    <button class="btn btn-gold btn-wide" id="do-again">もう一度この面子で</button>
+    <button class="btn btn-text" id="do-home">館を出る</button>
+  </div>
+</section>
+
+<!-- ══════════ 接続の帯 ══════════ -->
+<div class="netbar" id="netbar" hidden>
+  <span class="netbar-dot"></span>
+  <span class="netbar-text" id="netbar-text"></span>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
