@@ -5,9 +5,9 @@
 
 import { connect, makeCode, normalizeCode, codeToKana } from './net.js';
 import {
-  createState, addPlayer, refreshPresence, apply, resolveHost, nudgeIfStuck,
+  createState, addPlayer, refreshPresence, apply, nudgeIfStuck,
   seatedPlayers, presentPlayers, currentId, currentPlayer, arcanaOf,
-  ARCANA, MAX_SEATS, KIND_LABEL, KIND_DECO, CAT_LABEL
+  MAX_SEATS, KIND_LABEL, KIND_DECO, CAT_LABEL
 } from './game.js';
 
 /* ══════════ 小道具 ══════════ */
