@@ -57,6 +57,7 @@ let myName = '';
 let pendingSpicy = true;
 let lastTurnOwner = null;
 let toastTimer = null;
+let seatTimer = null;
 
 const isHost = () => !!(net && state && state.hostId === net.selfId);
 const meId   = () => net?.selfId ?? null;
@@ -194,12 +195,12 @@ async function openRoom(code, { asHost, spicy }){
     bump();
   } else {
     state = null;
+    $('#do-start').hidden = true;
+    $('#do-retry').hidden = true;
+    $('#lobby-status').textContent = '主を探しています…';
     net.hello({ name: myName });          // すでに繋がっている相手がいれば、その場で名乗る
-    setTimeout(() => {
-      if (!state || !state.players?.[meId()]){
-        toast('部屋が見つかりません。合言葉を確かめてください');
-      }
-    }, 12000);
+    clearTimeout(seatTimer);
+    seatTimer = setTimeout(showStuckHelp, 15000);
   }
 
   $('#lobby-code').textContent = code;
@@ -293,6 +294,25 @@ function send(action){
 /* ══════════ 卓の操作 ══════════ */
 $('#do-start').addEventListener('click', () => send({ t: 'start' }));
 
+/* 席に着けないまま時間が過ぎたとき、詰まないための逃げ道 */
+function showStuckHelp(){
+  if (!net || state?.players?.[meId()]) return;
+  $('#do-retry').hidden = false;
+  $('#lobby-status').innerHTML =
+    '主に届いていないようです。合言葉を確かめて、もう一度叩いてみてください。<br>' +
+    '<span style="opacity:.7">それでもだめなら、全員で ' +
+    `<b>${location.pathname}?net=mqtt</b> を開くと別の経路になります。</span>`;
+}
+
+$('#do-retry').addEventListener('click', () => {
+  if (!net) return;
+  net.hello({ name: myName });
+  $('#do-retry').hidden = true;
+  $('#lobby-status').textContent = 'もう一度、名乗りました…';
+  clearTimeout(seatTimer);
+  seatTimer = setTimeout(showStuckHelp, 12000);
+});
+
 $('#copy-code').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(net?.code ?? '');
@@ -313,6 +333,9 @@ $('#do-home').addEventListener('click', leaveRoom);
 function leaveRoom(){
   try { net?.leave(); } catch { /* すでに切れている */ }
   net = null; state = null;
+  clearTimeout(seatTimer);
+  $('#do-retry').hidden = true;
+  $('#do-start').hidden = false;
   $('#netbar').hidden = true;
   document.body.classList.remove('with-netbar');
   show('s-home');
@@ -355,6 +378,11 @@ function renderLobby(){
 
   const n = presentPlayers(state).length;
   const start = $('#do-start');
+
+  if (state.players[meId()]){           // 席に着けたので、逃げ道はしまう
+    clearTimeout(seatTimer);
+    $('#do-retry').hidden = true;
+  }
 
   if (isHost()){
     start.hidden = false;
