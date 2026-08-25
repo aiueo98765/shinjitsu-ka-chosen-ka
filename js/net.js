@@ -6,6 +6,8 @@
 
 const APP_ID = 'shinjitsu-ka-chosen-ka';
 
+const IS_LOCAL = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+
 /** 合言葉に使う文字。0/O, 1/I/L のような読み違いの元を外してある。 */
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
@@ -67,8 +69,9 @@ export async function connect({ code, strategy = 'nostr', onJoin, onLeave, onMes
         appId: APP_ID,
         password: 'arcane:' + code,                // 合言葉を知らない者には中身が読めない
         relayConfig: { warnOnRelayFailure: false }, // 落ちているリレーは黙って迂回する
-        // 同じブラウザの別タブ同士で試すとき、mDNS の候補が解決できず繋がらない
-        ...(new URLSearchParams(location.search).has('debug')
+        // 同じブラウザの別タブ同士で試すとき、mDNS の候補が解決できず繋がらない。
+        // 本番でこれを入れると逆に繋がらなくなるので、手元の開発時だけに限る。
+        ...(IS_LOCAL && new URLSearchParams(location.search).has('debug')
           ? { _test_only_mdnsHostFallbackToLoopback: true }
           : {})
       },
