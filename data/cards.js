@@ -12,6 +12,7 @@ import { TRUTH } from './truth.js';
 import { DARE } from './dare.js';
 import { PEINE } from './peine.js';
 import { DEEP_TRUTH, DEEP_DARE } from './deep.js';
+import { HOT_TRUTH, HOT_DARE } from './hot.js';
 
 export const CAT_LABEL = {
   /* 真実 */
@@ -35,7 +36,11 @@ export const CAT_LABEL = {
   ippatsu:'その場かぎり'
 };
 
-export const CARDS = [...TRUTH, ...DEEP_TRUTH, ...DARE, ...DEEP_DARE, ...PEINE].map((c, idx) => ({ ...c, i: idx + 1 }));
+export const CARDS = [
+  ...TRUTH, ...DEEP_TRUTH, ...HOT_TRUTH,
+  ...DARE, ...DEEP_DARE, ...HOT_DARE,
+  ...PEINE
+].map((c, idx) => ({ ...c, i: idx + 1 }));
 
 export const COUNT = CARDS.reduce((acc, c) => {
   acc[c.k] = (acc[c.k] || 0) + 1;
