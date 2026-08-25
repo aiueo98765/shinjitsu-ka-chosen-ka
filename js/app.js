@@ -44,11 +44,34 @@ function wrapJa(text){
   return chunkText(text).map(s => `<span class="bs">${esc(s)}</span>`).join('<wbr>');
 }
 
-/** 「*ここ*」を強調に変えつつ、全体を文節で折る。 */
+/**
+ * 「*ここ*」を強調に変えつつ、全体を文節で折る。
+ * 先に文節を決めてから強調を乗せる。逆にすると強調の境目が
+ * 折れる口になり、「罰の札／が引かれます」のような割れ方をする。
+ */
 function say(text){
-  return text.split('*')
-    .map((run, i) => (i % 2 ? `<b>${wrapJa(run)}</b>` : wrapJa(run)))
-    .join('<wbr>');
+  const runs = text.split('*');
+  const marks = [];
+  let plain = '';
+  runs.forEach((run, i) => {
+    if (i % 2) marks.push([plain.length, plain.length + run.length]);
+    plain += run;
+  });
+
+  const bold = i => marks.some(([a, b]) => i >= a && i < b);
+
+  let at = 0;
+  return chunkText(plain).map(chunk => {
+    const start = at;
+    at += chunk.length;
+    let html = '';
+    for (let i = start; i < at; i++){
+      if (bold(i) && !(i > start && bold(i - 1))) html += '<b>';
+      html += esc(plain[i]);
+      if (bold(i) && !(i + 1 < at && bold(i + 1))) html += '</b>';
+    }
+    return `<span class="bs">${html}</span>`;
+  }).join('<wbr>');
 }
 
 let net = null;
@@ -323,9 +346,21 @@ $('#copy-code').addEventListener('click', async () => {
 });
 
 $('#do-leave-lobby').addEventListener('click', leaveRoom);
+
+/* おひらきは全員の卓を終わらせる。誤って触れないよう二度押しにする。 */
+let quitArmed = null;
 $('#do-quit').addEventListener('click', () => {
-  if (isHost()) send({ t: 'end' });
-  else leaveRoom();
+  if (!isHost()) { leaveRoom(); return; }
+  if (quitArmed){
+    clearTimeout(quitArmed); quitArmed = null;
+    send({ t: 'end' });
+    return;
+  }
+  $('#do-quit').textContent = 'もう一度押すと、おひらき';
+  quitArmed = setTimeout(() => {
+    quitArmed = null;
+    $('#do-quit').textContent = 'おひらきにする';
+  }, 4000);
 });
 $('#do-again').addEventListener('click', () => { send({ t: 'again' }); show('s-lobby'); });
 $('#do-home').addEventListener('click', leaveRoom);
@@ -470,7 +505,7 @@ function renderGame(){
   renderCaption(cur, mine);
   renderActions(mine);
 
-  $('#do-quit').textContent = isHost() ? 'おひらきにする' : '卓を離れる';
+  if (!quitArmed) $('#do-quit').textContent = isHost() ? 'おひらきにする' : '卓を離れる';
 }
 
 function myCurses(){
@@ -489,12 +524,12 @@ function renderCaption(cur, mine){
 
   if (state.phase === 'turn'){
     text = mine
-      ? '*真実*か*挑戦*か、札を選んでください。'
+      ? '*真実*か*挑戦*か。札を選んでください。'
       : `${who} が札を選んでいます。`;
   } else if (state.phase === 'reveal'){
     const kind = KIND_LABEL[state.card?.k] ?? '';
     text = mine
-      ? 'やり切ったら「やった」。無理なら逃げられますが、*罰の札*が引かれます。'
+      ? 'やり切ったら「やった」。無理なら逃げられます。ただし*罰*を引きます。'
       : `${who} の${kind}。聞き役に回りましょう。`;
   } else if (state.phase === 'penalty'){
     text = mine
@@ -536,8 +571,9 @@ $('#actions').addEventListener('click', e => {
 function renderEnd(){
   const ps = seatedPlayers(state);
   const total = ps.reduce((n, p) => n + p.truths + p.dares, 0);
-  $('#end-lead').innerHTML =
-    `${state.round - 1 > 0 ? `${state.round}巡、` : ''}あわせて<b>${total}</b>枚の札がめくられました。`;
+  $('#end-lead').innerHTML = total === 0
+    ? 'まだ一枚もめくられていません。'
+    : `${state.round > 1 ? `${state.round}巡、` : ''}あわせて<b>${total}</b>枚の札がめくられました。`;
 
   $('#end-tally').innerHTML = ps.map(p => `
     <li>
