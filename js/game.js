@@ -105,12 +105,19 @@ export function resolveHost(state){
 /* ══════════ 山札 ══════════ */
 
 /**
- * fled … 逃げた末に引く罰かどうか。
- * 「いま逃げた言い訳を述べる」の類（f: 1）は、
- * 卓の頭から罰を引き当てたときに出すと話が通らないので伏せておく。
+ * 山を切り分ける。
+ * fled      … 逃げた末に引く罰かどうか。「いま逃げた言い訳を述べる」の類
+ *              （f: 1）は、卓の頭から罰を引き当てたときに話が通らない。
+ * mochiyori … 持ち寄りの札（m: 1）だけを集めた別の山。
+ *              普段の山からは外してあるので、9分の1の籤に当たったときしか出ない。
  */
-function pool(state, kind, fled = false){
-  return CARDS.filter(c => c.k === kind && (state.spicy || !c.r) && (fled || !c.f));
+function pool(state, kind, { fled = false, mochiyori = false } = {}){
+  return CARDS.filter(c =>
+    c.k === kind &&
+    (state.spicy || !c.r) &&
+    (fled || !c.f) &&
+    (mochiyori ? !!c.m : !c.m)
+  );
 }
 
 /**
@@ -119,6 +126,9 @@ function pool(state, kind, fled = false){
  * 罰だけは枚数と切り離して重みを持たせてある。
  */
 const KIND_ODDS = [['t', 42], ['d', 42], ['p', 16]];
+
+/** 持ち寄りの札が出る割合。9回に1回は、ここから確実に配る。 */
+const MOCHIYORI_ODDS = 1 / 9;
 
 function rollKind(state){
   const live = KIND_ODDS.filter(([k]) => pool(state, k).length);
@@ -132,8 +142,8 @@ function rollKind(state){
   return live[live.length - 1][0];
 }
 
-function drawCard(state, kind, fled = false){
-  const deck = pool(state, kind, fled);
+function drawCard(state, kind, opts){
+  const deck = pool(state, kind, opts);
   if (!deck.length) return null;
 
   const used = new Set(state.used);
@@ -149,6 +159,7 @@ function drawCard(state, kind, fled = false){
   state.used.push(card.i);
 
   const out = { i: card.i, k: card.k, c: card.c, x: card.x, n: card.n || 0 };
+  if (card.m) out.m = 1;
 
   if (card.p){                                     // 相手を名指しする札
     const others = presentPlayers(state).filter(p => p.id !== currentId(state));
@@ -209,9 +220,14 @@ export function apply(state, action, fromId){
     /* 一枚引く。真実か挑戦か罰か、引いた本人にも選べない。 */
     case 'draw': {
       if (state.phase !== 'turn' || !isTurn) return false;
-      const kind = rollKind(state);
+
+      // 先に持ち寄りの籤を引く。当たれば種類の籤は引かない
+      const mochiyori = pool(state, 'd', { mochiyori: true }).length > 0
+        && Math.random() < MOCHIYORI_ODDS;
+
+      const kind = mochiyori ? 'd' : rollKind(state);
       if (!kind) return false;
-      const card = drawCard(state, kind);
+      const card = drawCard(state, kind, { mochiyori });
       if (!card) return false;
       state.card = card;
       state.phase = kind === 'p' ? 'penalty' : 'reveal';   // 罰は逃げ道なし
@@ -235,7 +251,7 @@ export function apply(state, action, fromId){
       if (state.phase !== 'reveal' || !isTurn) return false;
       const me = state.players[fromId];
       if (me) me.passes++;
-      const peine = drawCard(state, 'p', true);
+      const peine = drawCard(state, 'p', { fled: true });
       if (!peine) { advance(state); return true; }
       peine.fled = 1;
       state.card = peine;

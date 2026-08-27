@@ -50,13 +50,26 @@ const SEGMENTER = typeof Intl !== 'undefined' && Intl.Segmenter
 
 const HEAD = /[々〇㐀-鿿゠-ヿｦ-ﾟA-Za-z0-9０-９Ａ-Ｚａ-ｚ「『（(【〈]/;
 
+const OPEN = /^[「『（(【〈]$/;
+
 function chunkText(text){
   if (!SEGMENTER) return [text];
-  const out = [];
+  const raw = [];
   for (const { segment } of SEGMENTER.segment(text)){
-    if (!out.length || HEAD.test(segment[0])) out.push(segment);
-    else out[out.length - 1] += segment;
+    if (!raw.length || HEAD.test(segment[0])) raw.push(segment);
+    else raw[raw.length - 1] += segment;
   }
+
+  /* 開き括弧は塊の頭になるが、それだけで一塊になると行末に置き去りになる。
+     「／全員、私の」と割れるので、次の塊に抱かせて連れて行かせる。 */
+  const out = [];
+  let held = '';
+  for (const chunk of raw){
+    if (OPEN.test(chunk)){ held += chunk; continue; }
+    out.push(held + chunk);
+    held = '';
+  }
+  if (held) out.push(held);
   return out;
 }
 
