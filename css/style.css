@@ -289,22 +289,15 @@ body::before{
 }
 .btn-mini:hover{ border-color:var(--gold); background:rgba(201,163,73,.1); }
 
-/* 札を選ぶ三つ組 */
-.btn-choice{
-  flex:1 1 0; min-width:0;
-  display:flex; flex-direction:column; align-items:center; gap:3px;
-  padding:15px 8px 13px;
-  border:1px solid var(--gold-dim);
-  background:linear-gradient(180deg, rgba(26,33,80,.7), rgba(8,11,28,.86));
-  color:var(--paper);
+/* 一枚引くだけの札。選ぶ権利はないので、ボタンも一つしかない。 */
+.btn-draw{
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:16px 8px 14px;
 }
-.btn-choice small{
-  font-family:var(--deco-thin); font-size:10px; letter-spacing:.24em; text-indent:.24em;
-  color:var(--gold); font-weight:400;
+.btn-draw small{
+  font-family:var(--deco-thin); font-size:11px; letter-spacing:.3em; text-indent:.3em;
+  font-weight:400; color:rgba(42,31,6,.86); text-shadow:none;
 }
-.btn-choice:hover:not(:disabled){ border-color:var(--gold); background:linear-gradient(180deg, rgba(38,48,108,.8), rgba(12,16,38,.9)); }
-.btn-choice.is-verite:hover:not(:disabled){ box-shadow:inset 0 0 0 1px rgba(150,180,255,.24); }
-.btn-choice.is-defi:hover:not(:disabled){ box-shadow:inset 0 0 0 1px rgba(255,150,150,.24); }
 
 /* ══════════ 合言葉の板 ══════════ */
 .code-plate{
@@ -570,7 +563,6 @@ body::before{
 }
 .actions:empty{ display:none; }
 .actions .btn{ flex:1 1 100%; }
-.actions .btn-choice{ flex:1 1 0; }
 
 .btn-quit{ width:auto; margin-top:8px; font-size:12px; }
 
@@ -653,7 +645,7 @@ body.with-netbar .screen{ padding-bottom:calc(72px + env(safe-area-inset-bottom)
 @media (max-width:359px){
   .card-slot{ width:88vw; }
   .actions{ gap:7px; }
-  .btn-choice{ padding:12px 4px 11px; }
+  .btn-draw{ padding:13px 6px 12px; }
 }
 
 /* 低い画面（横向きスマホなど） */

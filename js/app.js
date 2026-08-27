@@ -524,17 +524,18 @@ function renderCaption(cur, mine){
 
   if (state.phase === 'turn'){
     text = mine
-      ? '*真実*か*挑戦*か。札を選んでください。'
-      : `${who} が札を選んでいます。`;
+      ? '押すだけです。*真実*か*挑戦*か*罰*か、*選ぶ権利はありません*。'
+      : `${who} が札を引こうとしています。`;
   } else if (state.phase === 'reveal'){
     const kind = KIND_LABEL[state.card?.k] ?? '';
     text = mine
       ? 'やり切ったら「やった」。無理なら逃げられます。ただし*罰*を引きます。'
       : `${who} の${kind}。聞き役に回りましょう。`;
   } else if (state.phase === 'penalty'){
+    const fled = !!state.card?.fled;
     text = mine
-      ? '逃げた代償です。断れません。'
-      : `${who} が罰を引きました。`;
+      ? (fled ? '逃げた代償です。断れません。' : '引いてしまいました。*罰*に逃げ道はありません。')
+      : (fled ? `${who} が罰を引きました。` : `${who} が引いたのは罰。逃げ道はありません。`);
   }
 
   el.innerHTML = say(text) + boundNote;
@@ -546,8 +547,7 @@ function renderActions(mine){
 
   if (state.phase === 'turn'){
     box.innerHTML = `
-      <button class="btn btn-choice is-verite" data-act="t"><small>VÉRITÉ</small>真実</button>
-      <button class="btn btn-choice is-defi"   data-act="d"><small>DÉFI</small>挑戦</button>`;
+      <button class="btn btn-gold btn-draw" data-act="draw"><small>TIRAGE</small>札を引く</button>`;
   } else if (state.phase === 'reveal'){
     box.innerHTML = `
       <button class="btn btn-gold" data-act="done">やった</button>
@@ -564,13 +564,12 @@ $('#actions').addEventListener('click', e => {
   if (!b) return;
   const a = b.dataset.act;
   b.closest('.actions').querySelectorAll('button').forEach(x => x.disabled = true);
-  if (a === 't' || a === 'd') send({ t: 'choose', kind: a });
-  else send({ t: a });
+  send({ t: a });
 });
 
 function renderEnd(){
   const ps = seatedPlayers(state);
-  const total = ps.reduce((n, p) => n + p.truths + p.dares, 0);
+  const total = ps.reduce((n, p) => n + p.truths + p.dares + (p.peines ?? 0), 0);
   $('#end-lead').innerHTML = total === 0
     ? 'まだ一枚もめくられていません。'
     : `${state.round > 1 ? `${state.round}巡、` : ''}あわせて<b>${total}</b>枚の札がめくられました。`;
@@ -581,6 +580,7 @@ function renderEnd(){
       <span class="tally-name">${esc(p.name)}</span>
       <span class="tally-unit">真実</span><span class="tally-num">${p.truths}</span>
       <span class="tally-unit">挑戦</span><span class="tally-num">${p.dares}</span>
+      <span class="tally-unit">罰</span><span class="tally-num">${p.peines ?? 0}</span>
       <span class="tally-unit">逃げ</span><span class="tally-num">${p.passes}</span>
     </li>`).join('');
 

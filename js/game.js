@@ -66,7 +66,7 @@ export function addPlayer(state, id, name){
   state.players[id] = {
     id, name: trimmed, seat,
     present: true,
-    truths: 0, dares: 0, passes: 0
+    truths: 0, dares: 0, peines: 0, passes: 0
   };
   state.order.push(id);
   return state.players[id];
@@ -104,12 +104,36 @@ export function resolveHost(state){
 
 /* ══════════ 山札 ══════════ */
 
-function pool(state, kind){
-  return CARDS.filter(c => c.k === kind && (state.spicy || !c.r));
+/**
+ * fled … 逃げた末に引く罰かどうか。
+ * 「いま逃げた言い訳を述べる」の類（f: 1）は、
+ * 卓の頭から罰を引き当てたときに出すと話が通らないので伏せておく。
+ */
+function pool(state, kind, fled = false){
+  return CARDS.filter(c => c.k === kind && (state.spicy || !c.r) && (fled || !c.f));
 }
 
-function drawCard(state, kind){
-  const deck = pool(state, kind);
+/**
+ * 何が来るかは選ばせない。種類そのものを、ここで籤にする。
+ * 山の厚みをそのまま重みにすると罰がほとんど出てこないので、
+ * 罰だけは枚数と切り離して重みを持たせてある。
+ */
+const KIND_ODDS = [['t', 42], ['d', 42], ['p', 16]];
+
+function rollKind(state){
+  const live = KIND_ODDS.filter(([k]) => pool(state, k).length);
+  const total = live.reduce((n, [, w]) => n + w, 0);
+  if (!total) return null;
+  let hit = Math.random() * total;
+  for (const [k, w] of live){
+    hit -= w;
+    if (hit < 0) return k;
+  }
+  return live[live.length - 1][0];
+}
+
+function drawCard(state, kind, fled = false){
+  const deck = pool(state, kind, fled);
   if (!deck.length) return null;
 
   const used = new Set(state.used);
@@ -182,16 +206,22 @@ export function apply(state, action, fromId){
       note(state, '卓がひらきました');
       return true;
 
-    case 'choose': {
+    /* 一枚引く。真実か挑戦か罰か、引いた本人にも選べない。 */
+    case 'draw': {
       if (state.phase !== 'turn' || !isTurn) return false;
-      const kind = action.kind === 'd' ? 'd' : 't';
+      const kind = rollKind(state);
+      if (!kind) return false;
       const card = drawCard(state, kind);
       if (!card) return false;
       state.card = card;
-      state.phase = 'reveal';
+      state.phase = kind === 'p' ? 'penalty' : 'reveal';   // 罰は逃げ道なし
       const me = state.players[fromId];
-      if (me) kind === 't' ? me.truths++ : me.dares++;
-      note(state, `${me?.name ?? '?'} は${KIND_LABEL[kind]}を選んだ`);
+      if (me){
+        if (kind === 't') me.truths++;
+        else if (kind === 'd') me.dares++;
+        else me.peines++;
+      }
+      note(state, `${me?.name ?? '?'} が引いたのは${KIND_LABEL[kind]}`);
       return true;
     }
 
@@ -205,8 +235,9 @@ export function apply(state, action, fromId){
       if (state.phase !== 'reveal' || !isTurn) return false;
       const me = state.players[fromId];
       if (me) me.passes++;
-      const peine = drawCard(state, 'p');
+      const peine = drawCard(state, 'p', true);
       if (!peine) { advance(state); return true; }
+      peine.fled = 1;
       state.card = peine;
       state.phase = 'penalty';
       note(state, `${me?.name ?? '?'} は逃げた`);
@@ -244,7 +275,7 @@ export function apply(state, action, fromId){
       state.turnIdx = 0;
       state.round = 1;
       state.turns = 0;
-      for (const p of seatedPlayers(state)){ p.truths = 0; p.dares = 0; p.passes = 0; }
+      for (const p of seatedPlayers(state)){ p.truths = 0; p.dares = 0; p.peines = 0; p.passes = 0; }
       return true;
     }
 
