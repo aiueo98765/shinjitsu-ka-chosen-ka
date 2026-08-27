@@ -13,6 +13,7 @@ import { DARE } from './dare.js';
 import { PEINE } from './peine.js';
 import { DEEP_TRUTH, DEEP_DARE } from './deep.js';
 import { HOT_TRUTH, HOT_DARE } from './hot.js';
+import { HOT2_TRUTH, HOT2_DARE } from './hot2.js';
 
 export const CAT_LABEL = {
   /* 真実 */
@@ -29,6 +30,7 @@ export const CAT_LABEL = {
   /* 挑戦 */
   voice:  '声',
   kokoro: '心を渡す',
+  send:   '送信',
   confess:'暴露',
   geinin: '一発芸',
   /* 罰 */
@@ -37,8 +39,8 @@ export const CAT_LABEL = {
 };
 
 export const CARDS = [
-  ...TRUTH, ...DEEP_TRUTH, ...HOT_TRUTH,
-  ...DARE, ...DEEP_DARE, ...HOT_DARE,
+  ...TRUTH, ...DEEP_TRUTH, ...HOT_TRUTH, ...HOT2_TRUTH,
+  ...DARE, ...DEEP_DARE, ...HOT_DARE, ...HOT2_DARE,
   ...PEINE
 ].map((c, idx) => ({ ...c, i: idx + 1 }));
 
