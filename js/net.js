@@ -8,6 +8,62 @@ const APP_ID = 'shinjitsu-ka-chosen-ka';
 
 const IS_LOCAL = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
 
+/* ══════════ 名刺交換のリレー ══════════
+   Trystero に任せると、47件の山から appId のハッシュで5件を選ぶ。
+   選ばれる5件は appId が変わらない限り永久に変わらない。
+   つまりその5件が朽ちた日に、この館だけが静かに繋がらなくなる。
+   実際そうなっていた。選ばれていた5件のうち slick.mjex.me と
+   relay.froth.zone は死に、nostr.tegila.com.br は繋がるのに
+   名刺を運ばない。生きていたのは yabu.me と purplerelay の二本だけ。
+
+   だから自分で並べる。ここに挙げたものは、
+   繋がるだけでなく「二人が実際に見つけ合えた」ことを確かめてある。
+   落ちたものは Trystero が黙って迂回する。 */
+export const NOSTR_RELAYS = [
+  'wss://nos.lol',
+  'wss://relay.primal.net',
+  'wss://nostr.mom',
+  'wss://purplerelay.com',
+  'wss://relay.mostr.pub',
+  'wss://nostr-pub.wellorder.net',
+  'wss://yabu.me/v2',
+  'wss://relay-jp.nostr.wirednet.jp'
+];
+
+/**
+ * リレーに手が届くかを、卓を開く前に確かめる。
+ * 一つでも開けば十分なので、最初に開いたところで切り上げる。
+ * 届かなければ控えの経路（MQTT）に回す判断材料になる。
+ */
+export function relaysReachable(ms = 3500){
+  return new Promise(resolve => {
+    const socks = [];
+    let settled = false;
+
+    const finish = ok => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      for (const w of socks){ try { w.close(); } catch { /* もう閉じている */ } }
+      resolve(ok);
+    };
+    const timer = setTimeout(() => finish(false), ms);
+
+    let pending = NOSTR_RELAYS.length;
+    for (const url of NOSTR_RELAYS){
+      try {
+        const w = new WebSocket(url);
+        socks.push(w);
+        w.onopen  = () => finish(true);
+        w.onerror = () => { if (--pending <= 0) finish(false); };
+      } catch {
+        if (--pending <= 0) finish(false);
+      }
+    }
+    if (!pending) finish(false);
+  });
+}
+
 /** 合言葉に使う文字。0/O, 1/I/L のような読み違いの元を外してある。 */
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
@@ -68,7 +124,11 @@ export async function connect({ code, strategy = 'nostr', onJoin, onLeave, onMes
       {
         appId: APP_ID,
         password: 'arcane:' + code,                // 合言葉を知らない者には中身が読めない
-        relayConfig: { warnOnRelayFailure: false }, // 落ちているリレーは黙って迂回する
+        // 落ちているリレーは黙って迂回する。宛先は経路ごとに違うので、
+        // Nostr のときだけ自前の一覧を渡す（MQTT は既定の四つを使う）。
+        relayConfig: strategy === 'mqtt'
+          ? { warnOnRelayFailure: false }
+          : { urls: NOSTR_RELAYS, warnOnRelayFailure: false },
         // 同じブラウザの別タブ同士で試すとき、mDNS の候補が解決できず繋がらない。
         // 本番でこれを入れると逆に繋がらなくなるので、手元の開発時だけに限る。
         ...(IS_LOCAL && new URLSearchParams(location.search).has('debug')

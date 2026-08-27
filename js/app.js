@@ -3,7 +3,7 @@
    画面の出し入れと、主・客それぞれの振る舞い。
    ══════════════════════════════════════════════════════ */
 
-import { connect, makeCode, normalizeCode, codeToKana } from './net.js';
+import { connect, makeCode, normalizeCode, codeToKana, relaysReachable } from './net.js';
 import {
   createState, addPlayer, refreshPresence, apply, nudgeIfStuck,
   seatedPlayers, presentPlayers, currentId, currentPlayer, arcanaOf,
@@ -17,7 +17,28 @@ const esc = s => String(s).replace(/[&<>"']/g, c => (
   { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
 ));
 
-const STRATEGY = new URLSearchParams(location.search).get('net') === 'mqtt' ? 'mqtt' : 'nostr';
+/* ══════════ 門は二つある ══════════
+   名刺交換の経路は Nostr（表）と MQTT（控え）の二本。
+   どちらが通るかは回線しだいなので、人に選ばせない。
+   主は開く前に表へ手が届くかを確かめ、客は席に着けるまで
+   二つの門を交互に叩く。?net= を付けたときだけ、その指定に従う。 */
+const ROUTES = ['nostr', 'mqtt'];
+const FORCED = (() => {
+  const v = new URLSearchParams(location.search).get('net');
+  return ROUTES.includes(v) ? v : null;
+})();
+
+const SCAN_MS = 9000;    // 一つの門を叩き続ける時間
+const SCAN_MAX = 2;      // 叩き替える回数。使い切ったら案内を出す
+
+let route = null;
+let scanLeft = 0;
+
+/** 表の門に手が届くか。届かなければ控えから始める。 */
+async function firstRoute(){
+  if (FORCED) return FORCED;
+  return (await relaysReachable()) ? 'nostr' : 'mqtt';
+}
 
 /* ══════════ 日本語を文節で折る ══════════
    「一番静か／に壊れかけて」のような割れ方をさせない。
@@ -181,6 +202,7 @@ $('#do-join').addEventListener('click', async () => {
   localStorage.setItem('shinjitsu:name', name);
   myName = name;
 
+  scanLeft = SCAN_MAX;
   $('#do-join').disabled = true;
   try {
     await openRoom(code, { asHost: false });
@@ -192,10 +214,13 @@ $('#do-join').addEventListener('click', async () => {
 });
 
 /* ══════════ 部屋をひらく ══════════ */
-async function openRoom(code, { asHost, spicy }){
+async function openRoom(code, { asHost, spicy, want }){
+  netbar('connecting', '門を探しています');     // 表が塞がっていると、見立てに数秒かかる
+  route = want || await firstRoute();
+
   net = await connect({
     code,
-    strategy: STRATEGY,
+    strategy: route,
     onJoin: onPeerJoin,
     onLeave: onPeerLeave,
     onMessage: onMessage,
@@ -206,7 +231,7 @@ async function openRoom(code, { asHost, spicy }){
         ok:         s.detail,
         error:      'つながりませんでした'
       }[s.state] || s.detail;
-      netbar(s.state, label);
+      netbar(s.state, route === 'mqtt' ? `${label}（控えの経路）` : label);
     }
   });
 
@@ -222,8 +247,7 @@ async function openRoom(code, { asHost, spicy }){
     $('#do-retry').hidden = true;
     $('#lobby-status').textContent = '主を探しています…';
     net.hello({ name: myName });          // すでに繋がっている相手がいれば、その場で名乗る
-    clearTimeout(seatTimer);
-    seatTimer = setTimeout(showStuckHelp, 15000);
+    armScan(code);
   }
 
   $('#lobby-code').textContent = code;
@@ -317,14 +341,40 @@ function send(action){
 /* ══════════ 卓の操作 ══════════ */
 $('#do-start').addEventListener('click', () => send({ t: 'start' }));
 
-/* 席に着けないまま時間が過ぎたとき、詰まないための逃げ道 */
+/* ══════════ 席に着けないとき ══════════
+   客は黙って門を叩き替える。どちらの門で待っているかは
+   主の回線しだいで、客には分からないため。 */
+function armScan(code){
+  clearTimeout(seatTimer);
+  seatTimer = setTimeout(() => nextGate(code), SCAN_MS);
+}
+
+async function nextGate(code){
+  if (!net || state?.players?.[meId()]) return;      // もう座れている
+  if (FORCED || scanLeft <= 0) return showStuckHelp();
+
+  scanLeft--;
+  const want = ROUTES[(ROUTES.indexOf(route) + 1) % ROUTES.length];
+  $('#lobby-status').textContent = 'もう一つの門を叩いています…';
+
+  try { net.leave(); } catch { /* すでに切れている */ }
+  net = null; state = null;
+
+  try {
+    await openRoom(code, { asHost: false, want });
+  } catch {
+    showStuckHelp();
+  }
+}
+
+/* 二つの門を叩いても届かなかったとき、詰まないための案内 */
 function showStuckHelp(){
-  if (!net || state?.players?.[meId()]) return;
+  if (net && state?.players?.[meId()]) return;
   $('#do-retry').hidden = false;
   $('#lobby-status').innerHTML =
-    '主に届いていないようです。合言葉を確かめて、もう一度叩いてみてください。<br>' +
-    '<span style="opacity:.7">それでもだめなら、全員で ' +
-    `<b>${location.pathname}?net=mqtt</b> を開くと別の経路になります。</span>`;
+    '主に届きませんでした。<b>合言葉</b>を確かめて、もう一度叩いてみてください。<br>' +
+    '<span style="opacity:.7">主がまだ部屋を開いていないのかもしれません。' +
+    '経路は二つとも試しています。</span>';
 }
 
 $('#do-retry').addEventListener('click', () => {
@@ -332,8 +382,8 @@ $('#do-retry').addEventListener('click', () => {
   net.hello({ name: myName });
   $('#do-retry').hidden = true;
   $('#lobby-status').textContent = 'もう一度、名乗りました…';
-  clearTimeout(seatTimer);
-  seatTimer = setTimeout(showStuckHelp, 12000);
+  scanLeft = SCAN_MAX;
+  armScan(net.code);
 });
 
 $('#copy-code').addEventListener('click', async () => {
